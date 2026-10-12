@@ -1,0 +1,7 @@
+{
+  "name": "Agent notifications",
+  "short_name": "Agent",
+  "display": "standalone",
+  "id": "https://elijah-j.github.io/agent-notify/",
+  "start_url": "https://elijah-j.github.io/agent-notify/index.html"
+}
