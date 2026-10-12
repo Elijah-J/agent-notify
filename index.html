@@ -1,25 +1,210 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Agent notifications</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #F2F2F7; --card: #FFFFFF; --card-2: #F9F9FB; --text: #1C1C1E; --text-2: #6E6E73; --sep: #E5E5EA;
+  --accent: #0A7AFF; --accent-press: #0862CC; --success: #248A3D; --warn: #B25000; --danger: #D70015; --on-accent: #FFFFFF;
+  --tint: rgba(10,122,255,.12); --tint-press: rgba(10,122,255,.20);
+  --warn-tint: rgba(178,80,0,.12); --success-tint: rgba(36,138,61,.12); --danger-tint: rgba(215,0,21,.12);
+  --font: -apple-system, system-ui, "SF Pro Text", sans-serif;
+  --gutter: 1rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --card: #1C1C1E; --card-2: #2C2C2E; --text: #F2F2F7; --text-2: #98989D; --sep: #38383A;
+    --accent: #0A84FF; --accent-press: #3B9BFF; --success: #30D158; --warn: #FF9F0A; --danger: #FF453A;
+    --tint: rgba(10,132,255,.18); --tint-press: rgba(10,132,255,.26);
+    --warn-tint: rgba(255,159,10,.18); --success-tint: rgba(48,209,88,.18); --danger-tint: rgba(255,69,58,.18);
+  }
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+  font: 400 1.0625rem/1.5625rem var(--font);
+  padding: env(safe-area-inset-top) max(var(--gutter), env(safe-area-inset-right)) calc(1.5rem + env(safe-area-inset-bottom)) max(var(--gutter), env(safe-area-inset-left));
+}
+p, h1, h2 { margin: 0; }
+[hidden] { display: none !important; }
+main { max-width: 40rem; margin: 0 auto; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 2.75rem; margin: .5rem 0 .75rem; }
+h1 { font: 600 1.375rem/1.75rem var(--font); }
+h2 { font: 600 1.0625rem/1.375rem var(--font); margin-bottom: .25rem; }
+.label { font: 500 .8125rem/1.125rem var(--font); color: var(--text-2); letter-spacing: .2px; }
+.confirm { display: flex; align-items: center; gap: .5rem; }
+.card { background: var(--card); border-radius: 14px; margin: 0 0 .75rem; }
+.pad { padding: 1rem; }
+.list { overflow: hidden; }
+.row { display: flex; align-items: center; gap: .75rem; min-height: 4rem; padding: 1rem; color: inherit; text-decoration: none;
+  position: relative; -webkit-tap-highlight-color: transparent; }
+.row + .row::before { content: ""; position: absolute; top: 0; left: 1rem; right: 0; border-top: 1px solid var(--sep); }
+.row:active { background: var(--card-2); }
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 14px; }
+.row-body { flex: 1; min-width: 0; }
+.row-top { display: flex; align-items: center; gap: .5rem; }
+.row-title { flex: 1; min-width: 0; font: 500 1.0625rem/1.375rem var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-sub { display: block; font: 400 .9375rem/1.25rem var(--font); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { color: var(--text-2); font-size: 1.25rem; }
+.badge { border-radius: 6px; padding: .125rem .375rem; text-transform: uppercase; flex: none; }
+.badge.pending { background: var(--warn-tint); color: var(--warn); }
+.badge.approved { background: var(--success-tint); color: var(--success); }
+.badge.edited { background: var(--tint); color: var(--accent); }
+.badge.failed { background: var(--danger-tint); color: var(--danger); }
+.empty { text-align: center; padding: 3rem 1rem 2rem; }
+.empty-title { font: 600 1.375rem/1.75rem var(--font); margin: 0; }
+.empty p { margin-top: .5rem; font: 400 .9375rem/1.25rem var(--font); color: var(--text-2); }
+.cap { text-align: center; margin: 0 0 1.5rem; }
+.setup summary { display: flex; align-items: center; justify-content: space-between; min-height: 2.75rem; margin: -.75rem 0;
+  list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.setup summary::-webkit-details-marker { display: none; }
+.setup summary::after { content: "\203A"; color: var(--text-2); font-size: 1.25rem; transition: transform 120ms; }
+.setup[open] summary::after { transform: rotate(90deg); }
+.setup summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.setup[open] summary { margin-bottom: .25rem; }
+.setup p { margin-bottom: .75rem; font: 400 .9375rem/1.25rem var(--font); color: var(--text-2); }
+.setup .status { margin: .75rem 0 0; }
+textarea { display: block; width: 100%; margin-top: .75rem; border: 0; border-radius: 12px; padding: .75rem; resize: vertical;
+  background: var(--card-2); color: var(--text); font: 400 .8125rem/1.125rem ui-monospace, Menlo, monospace; }
+.btn { appearance: none; -webkit-appearance: none; border: 0; border-radius: 12px; min-height: 2.75rem; min-width: 2.75rem; padding: 0 1rem;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  font: 600 1.0625rem/1.375rem var(--font); -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  transition: background-color 150ms, transform 80ms, opacity 120ms; }
+.btn.small { min-height: 2.75rem; font-size: .9375rem; }
+.filled { background: var(--accent); color: var(--on-accent); }
+.tinted { background: var(--tint); color: var(--accent); }
+.wide { display: flex; width: 100%; margin-top: .75rem; }
+.filled:active { background: var(--accent-press); transform: scale(.97); }
+.tinted:active { background: var(--tint-press); transform: scale(.97); }
+.btn:disabled { opacity: .4; pointer-events: none; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .row:hover { background: var(--card-2); }
+  .filled:hover { background: var(--accent-press); }
+  .tinted:hover { background: var(--tint-press); }
+}
+@media (min-width: 700px) {
+  :root { --gutter: 1.5rem; }
+  main { padding-top: 2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0ms !important; }
+}
+</style>
+<body>
 <main>
-  <h1>Agent notifications</h1>
-  <p>Add this app to your Home Screen or Dock, then enable notifications.</p>
-  <button id="enable" disabled>Enable notifications</button>
-  <p id="status" role="status">Preparing…</p>
-  <textarea id="subscription" readonly rows="10" aria-label="Subscription JSON"></textarea>
-  <button id="copy" disabled>Copy</button>
+  <header class="head">
+    <h1>Requests</h1>
+    <button class="btn tinted small" id="clear" type="button" hidden>Clear</button>
+    <p class="confirm label" id="clear-confirm" hidden>
+      <span id="clear-question"></span>
+      <button class="btn tinted small" id="clear-yes" type="button">Clear</button>
+      <button class="btn tinted small" id="clear-keep" type="button">Keep</button>
+    </p>
+  </header>
+  <section class="card empty" id="empty" hidden>
+    <h2 class="empty-title">No requests yet</h2>
+    <p>When an agent asks for approval, it appears here. Tap a notification to reply.</p>
+  </section>
+  <nav class="card list" id="requests" aria-label="Recent requests"></nav>
+  <p class="cap label" id="cap" hidden></p>
+  <details class="card pad setup" id="setup">
+    <summary><h2>Notifications on this device</h2></summary>
+    <p>Add this app to your Home Screen or Dock, then enable notifications.</p>
+    <button class="btn filled wide" id="enable" type="button" disabled>Enable notifications</button>
+    <p class="status label" id="status" role="status">Preparing…</p>
+    <textarea id="subscription" readonly rows="6" aria-label="Subscription JSON" hidden></textarea>
+    <button class="btn tinted wide" id="copy" type="button" disabled hidden>Copy</button>
+  </details>
 </main>
 <script>
 const key = 'BKvYEZWhLbfxR7rtDxI8buagwKbpzoIXPjIqCHrq8bxJnFYs9AyofJsOHohyF_CTIL20COn8_YLmIRtFXL2PTBs';
+const STORE = 'an:history';
+const KEEP = 50;
+const STATES = {pending: 'Pending', approved: 'Approved', edited: 'Edited', failed: 'Failed'};
+const $ = id => document.getElementById(id);
+const number = value => value.toLocaleString('en-US');
+const plural = (count, word) => number(count) + ' ' + word + (count === 1 ? '' : 's');
+function ago(time) {
+  const minutes = Math.floor(Math.max(0, Date.now() - time) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return minutes + ' min ago';
+  if (minutes < 1440) return Math.floor(minutes / 60) + ' h ago';
+  return new Date(time).toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+}
+// Requests opened from notifications on this device (r.html records them); nothing leaves it.
+function history() {
+  try {
+    const items = JSON.parse(localStorage.getItem(STORE) || '[]');
+    return Array.isArray(items) ? items.filter(item => item && typeof item.id === 'string' && typeof item.hash === 'string') : [];
+  } catch (error) {
+    return [];
+  }
+}
+function span(className, text) {
+  const element = document.createElement('span');
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+function renderRequests() {
+  const items = history();
+  const rows = items.map(item => {
+    const state = STATES[item.state] ? item.state : 'pending';
+    const when = state === 'pending' ? ago(item.sent || item.opened) : STATES[state] + ' ' + ago(item.at || item.opened);
+    const row = document.createElement('a');
+    row.className = 'row';
+    row.href = 'r.html#' + item.hash;
+    row.setAttribute('aria-label', [item.title, item.kind, STATES[state], ago(state === 'pending' ? item.sent || item.opened : item.at || item.opened)].filter(Boolean).join(', '));
+    const body = span('row-body', '');
+    const top = span('row-top', '');
+    top.append(span('row-title', item.title || 'Request ' + item.id), span('badge label ' + state, STATES[state]));
+    const chars = typeof item.chars === 'number' ? plural(item.chars, 'char') : '';
+    body.append(top, span('row-sub', [item.kind, when, chars].filter(Boolean).join(' · ')));
+    const chevron = span('chev', '›');
+    chevron.setAttribute('aria-hidden', 'true');
+    row.append(body, chevron);
+    return row;
+  });
+  $('requests').replaceChildren(...rows);
+  $('requests').hidden = !rows.length;
+  $('empty').hidden = rows.length > 0;
+  $('cap').hidden = !rows.length;
+  $('cap').textContent = 'This device keeps the last ' + KEEP + ' requests.';
+  $('clear').hidden = !rows.length;
+  $('clear-confirm').hidden = true;
+  // Setup is for first use; once requests arrive, keep it folded so it does not invite a re-subscribe.
+  $('setup').open = !rows.length;
+}
+$('clear').addEventListener('click', () => {
+  $('clear-question').textContent = 'Clear ' + plural(history().length, 'request') + '?';
+  $('clear').hidden = true;
+  $('clear-confirm').hidden = false;
+});
+$('clear-keep').addEventListener('click', renderRequests);
+$('clear-yes').addEventListener('click', () => {
+  try {
+    localStorage.removeItem(STORE);
+  } catch (error) {
+    // Nothing stored to clear.
+  }
+  renderRequests();
+});
+renderRequests();
+
 const padded = key.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - key.length % 4) % 4);
 const applicationServerKey = Uint8Array.from(atob(padded), char => char.charCodeAt(0));
-const enable = document.getElementById('enable');
-const status = document.getElementById('status');
-const subscriptionText = document.getElementById('subscription');
-const copy = document.getElementById('copy');
+const enable = $('enable');
+const status = $('status');
+const subscriptionText = $('subscription');
+const copy = $('copy');
 let pushManager = window.pushManager;
 async function prepare() {
   try {
@@ -39,6 +224,8 @@ enable.onclick = async () => {
     // This is the first awaited call in the click handler: preserve the gesture.
     const subscription = await pushManager.subscribe({userVisibleOnly: true, applicationServerKey});
     subscriptionText.value = JSON.stringify(subscription.toJSON());
+    subscriptionText.hidden = false;
+    copy.hidden = false;
     copy.disabled = false;
     status.textContent = 'Copy this subscription and paste it into agent-notify subscribe on the Mac.';
   } catch (error) {
