@@ -206,6 +206,14 @@ const status = $('status');
 const subscriptionText = $('subscription');
 const copy = $('copy');
 let pushManager = window.pushManager;
+function showSubscription(subscription) {
+  subscriptionText.value = JSON.stringify(subscription.toJSON());
+  subscriptionText.hidden = false;
+  copy.hidden = false;
+  copy.disabled = false;
+  enable.hidden = true;
+  enable.disabled = true;
+}
 async function prepare() {
   try {
     if (!pushManager) {
@@ -213,8 +221,14 @@ async function prepare() {
       const registration = await navigator.serviceWorker.ready;
       pushManager = registration.pushManager;
     }
-    enable.disabled = false;
-    status.textContent = 'Ready to enable notifications.';
+    const subscription = await pushManager.getSubscription();
+    if (subscription) {
+      showSubscription(subscription);
+      status.textContent = 'Notifications are already on for this device. Copy the subscription if needed.';
+    } else {
+      enable.disabled = false;
+      status.textContent = 'Ready to enable notifications.';
+    }
   } catch (error) {
     status.textContent = 'Open the installed web app in a supported Safari version.';
   }
@@ -223,10 +237,7 @@ enable.onclick = async () => {
   try {
     // This is the first awaited call in the click handler: preserve the gesture.
     const subscription = await pushManager.subscribe({userVisibleOnly: true, applicationServerKey});
-    subscriptionText.value = JSON.stringify(subscription.toJSON());
-    subscriptionText.hidden = false;
-    copy.hidden = false;
-    copy.disabled = false;
+    showSubscription(subscription);
     status.textContent = 'Copy this subscription and paste it into agent-notify subscribe on the Mac.';
   } catch (error) {
     status.textContent = 'Notifications were not enabled. Check this app’s notification permission.';
