@@ -1,36 +1,374 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
-<title>Reply to agent</title>
+<title>Agent Reply</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #F2F2F7; --card: #FFFFFF; --card-2: #F9F9FB; --text: #1C1C1E; --text-2: #6E6E73; --sep: #E5E5EA;
+  --accent: #0A7AFF; --accent-press: #0862CC; --success: #248A3D; --warn: #B25000; --danger: #D70015; --on-accent: #FFFFFF;
+  --tint: rgba(10,122,255,.12); --tint-press: rgba(10,122,255,.20); --bar: rgba(242,242,247,.9);
+  --warn-tint: rgba(178,80,0,.12); --success-tint: rgba(36,138,61,.12); --danger-tint: rgba(215,0,21,.12);
+  --font: -apple-system, system-ui, "SF Pro Text", sans-serif;
+  --gutter: 1rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000; --card: #1C1C1E; --card-2: #2C2C2E; --text: #F2F2F7; --text-2: #98989D; --sep: #38383A;
+    --accent: #0A84FF; --accent-press: #3B9BFF; --success: #30D158; --warn: #FF9F0A; --danger: #FF453A;
+    --tint: rgba(10,132,255,.18); --tint-press: rgba(10,132,255,.26); --bar: rgba(0,0,0,.9);
+    --warn-tint: rgba(255,159,10,.18); --success-tint: rgba(48,209,88,.18); --danger-tint: rgba(255,69,58,.18);
+  }
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+  font: 400 1.0625rem/1.5625rem var(--font);
+  padding: env(safe-area-inset-top) max(var(--gutter), env(safe-area-inset-right)) 0 max(var(--gutter), env(safe-area-inset-left));
+}
+p, h1 { margin: 0; }
+[hidden] { display: none !important; }
+main { display: flex; flex-direction: column; min-height: calc(100vh - 2.75rem - env(safe-area-inset-top)); }
+.nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 2.75rem; }
+.nav a { justify-self: start; display: inline-flex; align-items: center; min-height: 2.75rem; min-width: 2.75rem;
+  color: var(--accent); text-decoration: none; font-size: 1.0625rem; }
+.nav-title { font-weight: 600; }
+.card { background: var(--card); border-radius: 14px; padding: 1rem; margin: 0 0 .75rem; }
+.line { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.label { font: 500 .8125rem/1.125rem var(--font); color: var(--text-2); letter-spacing: .2px; }
+.badge { background: var(--card-2); border-radius: 6px; padding: .125rem .375rem; text-transform: uppercase; }
+.badge.approved { background: var(--success-tint); color: var(--success); }
+.badge.edited { background: var(--tint); color: var(--accent); }
+.badge.failed { background: var(--danger-tint); color: var(--danger); }
+.line > :not([hidden]) ~ .meta:not(:empty)::before { content: "\00B7\00A0"; }
+.title { font: 600 1.375rem/1.75rem var(--font); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.missing-body { margin-top: .5rem; font: 400 .9375rem/1.25rem var(--font); color: var(--text-2); }
+.banner { background: var(--warn-tint); border-radius: 12px; padding: .75rem 1rem; margin: 0 0 .75rem;
+  font: 500 .9375rem/1.25rem var(--font); color: var(--text); }
+.well { display: block; width: 100%; margin: 0; border: 0; border-radius: 12px; padding: .75rem;
+  background: var(--card-2); color: var(--text); font: 400 1.0625rem/1.5625rem var(--font);
+  white-space: pre-wrap; overflow-wrap: anywhere; }
+.well:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+textarea.well { resize: none; min-height: 6.25rem; field-sizing: content; animation: fade 120ms ease-out; }
+textarea.well:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.more { display: block; margin-top: .5rem; color: var(--text-2); }
+.foot { display: flex; justify-content: flex-end; align-items: baseline; gap: .75rem; margin-top: .5rem; }
+.limit { flex: 1; color: var(--danger); }
+.counter { text-align: right; font-variant-numeric: tabular-nums; }
+.counter.warn { color: var(--warn); }
+.counter.danger, .status.danger { color: var(--danger); }
+.status.success { color: var(--success); }
+.status.fade { animation: fade 150ms ease-out; }
+.status:not(:empty) { padding-bottom: .5rem; }
+.dock { position: sticky; bottom: 0; margin: auto calc(-1 * var(--gutter)) 0; padding: .75rem var(--gutter) calc(.75rem + env(safe-area-inset-bottom));
+  background: var(--bar); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.actions { display: flex; gap: .75rem; }
+.btn { appearance: none; -webkit-appearance: none; border: 0; border-radius: 12px; min-height: 3.125rem; min-width: 2.75rem; padding: 0 1rem;
+  display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
+  font: 600 1.0625rem/1.375rem var(--font); -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  transition: background-color 150ms, transform 80ms, opacity 120ms; }
+.filled { flex: 1.6; background: var(--accent); color: var(--on-accent); }
+.tinted { flex: 1; background: var(--tint); color: var(--accent); }
+.filled:active { background: var(--accent-press); transform: scale(.97); }
+.tinted:active { background: var(--tint-press); transform: scale(.97); }
+.btn:disabled { opacity: .4; pointer-events: none; }
+.btn.sent, .btn.sent:disabled { background: var(--success); color: var(--on-accent); opacity: 1; }
+.btn.danger { background: var(--danger); color: var(--on-accent); }
+.btn.danger:active { background: var(--danger); filter: brightness(.94); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wide { display: flex; width: 100%; margin-top: .75rem; }
+.shake { animation: shake 240ms ease-in-out; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (hover: hover) and (pointer: fine) {
+  .filled:hover { background: var(--accent-press); }
+  .tinted:hover { background: var(--tint-press); }
+  .btn.danger:hover { background: var(--danger); filter: brightness(.94); }
+}
+@media (min-width: 700px) {
+  :root { --gutter: 1.5rem; }
+  main { display: block; min-height: 0; }
+  .nav, main { max-width: 40rem; margin-left: auto; margin-right: auto; }
+  .nav { margin-top: 2rem; margin-bottom: .5rem; display: block; }
+  .nav-title { display: none; }
+  .nav a::before { content: "\2190\00A0"; }
+  .dock { position: static; margin: 0; padding: .25rem 0 1.5rem; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .btn { min-height: 2.75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0ms !important; }
+}
+</style>
+<body>
+<nav class="nav"><a id="home" href="index.html">Home</a><span class="nav-title">Agent Reply</span></nav>
 <main>
-  <h1>Reply to agent</h1>
-  <p id="status" role="status"></p>
-  <button id="approve" hidden>Approve</button>
-  <label id="edit-label" hidden>Edit text <textarea id="text" rows="5"></textarea></label>
-  <button id="edit" hidden>Send edit</button>
+  <section class="card">
+    <p class="line label" id="context-line"><span class="badge" id="kind" hidden></span><span class="badge" id="state" hidden></span><span class="meta" id="meta"></span></p>
+    <h1 class="title" id="title">Agent Reply</h1>
+    <p class="missing-body" id="missing-body" hidden></p>
+  </section>
+  <p class="banner" id="banner" role="alert" hidden></p>
+  <section class="card" id="draft-card" aria-label="Request text">
+    <div class="well" id="draft" tabindex="0"><span id="draft-text"></span><span class="more" id="draft-more" hidden></span></div>
+    <textarea class="well" id="editor" aria-label="Edit reply text" aria-describedby="counter limit" hidden></textarea>
+    <div class="foot label"><p class="limit" id="limit" hidden></p><p class="counter" id="counter"></p></div>
+  </section>
+  <div class="dock" id="dock">
+    <p class="status label" id="status" role="status" aria-live="polite"></p>
+    <div class="actions" id="actions">
+      <button class="btn filled" id="primary" type="button">Approve</button>
+      <button class="btn tinted" id="secondary" type="button">Edit</button>
+    </div>
+    <a class="btn tinted wide" id="back" href="index.html" hidden>Back to Home</a>
+    <a class="btn tinted wide" id="missing-home" href="index.html" hidden>Home</a>
+  </div>
 </main>
 <script>
+// Edit cap in characters: above the longest text a notification carries whole.
+// The Mac carried 16,094-character Shortcut links intact; the iPhone limit is
+// unmeasured (README § Exact "Agent Reply" Shortcut).
+const LIMIT = 3000;
+const STORE = 'an:history';
+const KEEP = 50;
+const $ = id => document.getElementById(id);
+const chars = text => Array.from(text).length;
+const number = value => value.toLocaleString('en-US');
+const plural = (count, word) => number(count) + ' ' + word + (count === 1 ? '' : 's');
+const STATES = {approved: 'Approved', edited: 'Edited', failed: 'Failed'};
+
+// Request fields are unpadded base64url of UTF-8 in the fragment, never the path or query.
+function decode(value) {
+  if (value === null || !/^[A-Za-z0-9_-]*$/.test(value) || value.length % 4 === 1) return null;
+  try {
+    const binary = atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4));
+    return new TextDecoder('utf-8', {fatal: true, ignoreBOM: true}).decode(Uint8Array.from(binary, char => char.charCodeAt(0)));
+  } catch (error) {
+    return null;
+  }
+}
+function encode(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return {size: bytes.length, value: btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')};
+}
+function ago(time) {
+  const minutes = Math.floor(Math.max(0, Date.now() - time) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return minutes + ' min ago';
+  if (minutes < 1440) return Math.floor(minutes / 60) + ' h ago';
+  return new Date(time).toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+}
+function history() {
+  try {
+    const items = JSON.parse(localStorage.getItem(STORE) || '[]');
+    return Array.isArray(items) ? items.filter(item => item && typeof item.id === 'string' && typeof item.hash === 'string') : [];
+  } catch (error) {
+    return [];
+  }
+}
+function remember(changes) {
+  const items = history();
+  const index = items.findIndex(item => item.id === id);
+  const item = Object.assign(index < 0 ? {} : items.splice(index, 1)[0], changes);
+  // Newest opened first; a tie keeps the item just touched in front.
+  items.unshift(item);
+  items.sort((a, b) => b.opened - a.opened);
+  try {
+    localStorage.setItem(STORE, JSON.stringify(items.slice(0, KEEP)));
+  } catch (error) {
+    // Storage is a convenience: replies never depend on it.
+  }
+  return item;
+}
+
 const args = new URLSearchParams(location.hash.slice(1));
 const id = args.get('id') || '';
 const options = (args.get('o') || '').split(',');
-const status = document.getElementById('status');
-const valid = /^[A-Za-z0-9_-]{1,128}$/.test(id) && options.length > 0 && options.every(option => ['approve', 'edit'].includes(option));
-function reply(verdict) {
-  const text = document.getElementById('text').value.replace(/[\t\r\n]+/g, ' ');
-  const line = id + '\t' + verdict + (verdict === 'edit' ? '\t' + text : '');
-  location.href = 'shortcuts://run-shortcut?name=Agent%20Reply&input=text&text=' + encodeURIComponent(line);
+const valid = /^[A-Za-z0-9_-]{1,128}$/.test(id) && options.every(option => option === 'approve' || option === 'edit');
+const declared = /^(0|[1-9][0-9]{0,9})$/.test(args.get('n') || '') ? Number(args.get('n')) : null;
+const sent = /^[0-9]{1,12}$/.test(args.get('s') || '') ? Number(args.get('s')) * 1000 : null;
+const kind = decode(args.get('k')) || '';
+const heading = decode(args.get('h')) || 'Request ' + id;
+let text = decode(args.get('t'));
+if (text !== null && declared !== null && chars(text) > declared) text = null;
+const arrived = text === null ? 0 : chars(text);
+const total = declared === null ? arrived : declared;
+const carried = text === null ? 'none' : arrived < total ? 'partial' : 'full';
+
+const primary = $('primary'), secondary = $('secondary'), editor = $('editor'), status = $('status');
+let mode = 'read';
+let phase = 'idle';
+let pending = null;
+let timer = null;
+let backShown = false;
+let record = valid ? history().find(item => item.id === id) || null : null;
+
+function render() {
+  const editing = mode === 'edit';
+  $('draft-card').hidden = carried === 'none' || (total === 0 && !editing);
+  $('draft').hidden = editing;
+  editor.hidden = !editing;
+  // Retry sends what the field shows: it stays editable after a failure, locked while handing off or sent.
+  editor.readOnly = phase === 'opening' || phase === 'sent';
+  const count = chars(editor.value);
+  const counter = $('counter'), limit = $('limit');
+  counter.classList.toggle('warn', editing && count >= LIMIT * 0.9 && count <= LIMIT);
+  counter.classList.toggle('danger', editing && count > LIMIT);
+  limit.hidden = !(editing && count > LIMIT);
+  limit.textContent = limit.hidden ? '' : 'Too long for the Shortcut link by ' + plural(count - LIMIT, 'character') + '.';
+  counter.textContent = editing ? number(count) + ' / ' + number(LIMIT)
+    : carried === 'partial' ? number(arrived) + ' of ' + plural(total, 'char') : plural(total, 'char');
+  const state = record && STATES[record.state];
+  $('state').hidden = !state;
+  $('state').textContent = state || '';
+  $('state').className = 'badge ' + (record ? record.state : '');
+  primary.classList.toggle('sent', phase === 'sent');
+  primary.classList.toggle('danger', phase === 'failed');
+  if (phase === 'sent' || phase === 'failed') {
+    primary.textContent = phase === 'sent' ? '✓ Sent' : 'Retry';
+    primary.setAttribute('aria-label', phase === 'sent' ? 'Sent to Shortcut' : 'Retry sending to Shortcut');
+    primary.hidden = false;
+    primary.disabled = phase === 'sent' || (editing && (count > LIMIT || !editor.value.trim()));
+    secondary.hidden = true;
+  } else if (editing) {
+    primary.textContent = 'Send';
+    primary.setAttribute('aria-label', 'Send edited text');
+    primary.hidden = false;
+    primary.disabled = phase === 'opening' || count > LIMIT || !editor.value.trim();
+    secondary.textContent = 'Cancel';
+    secondary.setAttribute('aria-label', 'Cancel editing');
+    secondary.hidden = false;
+    secondary.disabled = phase === 'opening';
+  } else {
+    primary.textContent = 'Approve';
+    primary.setAttribute('aria-label', 'Approve and send to Shortcut');
+    primary.hidden = !options.includes('approve');
+    primary.disabled = phase === 'opening';
+    secondary.textContent = 'Edit';
+    secondary.setAttribute('aria-label', 'Edit text before sending');
+    secondary.hidden = !options.includes('edit');
+    secondary.disabled = phase === 'opening' || carried !== 'full';
+  }
+  const message = phase === 'sent'
+    ? 'Sent to Shortcut. The Shortcut will open briefly; the agent picks up your reply once iCloud syncs it to the Mac.'
+    : phase === 'failed' ? 'Couldn’t hand off to the Shortcut. Check that “Agent Reply” exists in Shortcuts, then retry.' : '';
+  if (status.textContent !== message) {
+    status.textContent = message;
+    // Replay the fade for each new message.
+    status.style.animation = 'none';
+    void status.offsetWidth;
+    status.style.animation = '';
+  }
+  status.className = 'status label fade ' + (phase === 'sent' ? 'success' : phase === 'failed' ? 'danger' : '');
+  $('back').hidden = !backShown;
 }
-if (valid) {
-  status.textContent = 'Request ' + id;
-  document.getElementById('approve').hidden = !options.includes('approve');
-  document.getElementById('edit-label').hidden = !options.includes('edit');
-  document.getElementById('edit').hidden = !options.includes('edit');
-  document.getElementById('approve').onclick = () => reply('approve');
-  document.getElementById('edit').onclick = () => reply('edit');
+
+function grow() {
+  if (typeof CSS !== 'undefined' && CSS.supports && CSS.supports('field-sizing', 'content')) return;
+  editor.style.height = 'auto';
+  editor.style.height = editor.scrollHeight + 'px';
+}
+
+function handoff(line, verdict) {
+  pending = {line, verdict};
+  phase = 'opening';
+  primary.classList.remove('shake');
+  render();
+  clearTimeout(timer);
+  // Opening Shortcuts hides this page; still visible after 1.5 s means it did not open.
+  timer = setTimeout(() => { if (phase === 'opening') fail(); }, 1500);
+  try {
+    location.href = 'shortcuts://run-shortcut?name=Agent%20Reply&input=text&text=' + encodeURIComponent(line);
+  } catch (error) {
+    clearTimeout(timer);
+    fail();
+  }
+}
+function fail() {
+  phase = 'failed';
+  record = remember({state: 'failed', at: Date.now()});
+  render();
+  primary.classList.add('shake');
+}
+function handedOff() {
+  if (!pending || phase !== 'opening') return;
+  clearTimeout(timer);
+  phase = 'sent';
+  record = remember({state: pending.verdict === 'approve' ? 'approved' : 'edited', at: Date.now()});
+  if (navigator.vibrate) navigator.vibrate(10);
+  render();
+  setTimeout(() => { backShown = true; render(); }, 1200);
+}
+function sendEdit() {
+  if (chars(editor.value) > LIMIT || !editor.value.trim()) return;
+  const {size, value} = encode(editor.value);
+  handoff(id + '\tedit64\t' + size + '\t' + value, 'edit');
+}
+function act() {
+  if (phase === 'failed' && mode === 'edit') sendEdit();
+  else if (phase === 'failed') handoff(pending.line, pending.verdict);
+  else if (phase === 'idle' && mode === 'edit') sendEdit();
+  else if (phase === 'idle') handoff(id + '\tapprove', 'approve');
+}
+
+if (!valid) {
+  $('context-line').hidden = true;
+  $('title').textContent = 'Nothing to approve';
+  $('missing-body').textContent = 'This link is missing a request id. Open the app from a notification, or go Home.';
+  $('missing-body').hidden = false;
+  $('draft-card').hidden = true;
+  $('actions').hidden = true;
+  $('missing-home').hidden = false;
 } else {
-  status.textContent = 'This reply link is incomplete.';
+  record = remember({id, hash: location.hash.slice(1), title: heading, kind, chars: total, sent,
+    opened: record ? record.opened : Date.now(), state: record ? record.state : 'pending', at: record ? record.at : null});
+  $('kind').textContent = kind;
+  $('kind').hidden = !kind;
+  $('meta').textContent = ago(sent || record.opened);
+  $('title').textContent = heading;
+  $('draft-text').textContent = text || '';
+  $('draft-more').hidden = carried !== 'partial';
+  $('draft-more').textContent = '… (' + plural(total - arrived, 'more character') + ' not shown)';
+  const banner = $('banner');
+  banner.hidden = carried === 'full';
+  banner.textContent = carried === 'partial'
+    ? 'Only ' + number(arrived) + ' of ' + number(total) + ' characters arrived (notification size limit); the full text is in the agent’s session on the Mac. Approve sends the agent’s original in full. Editing isn’t possible here.'
+    : declared === null
+      ? 'This notification didn’t include the request text. Approve still sends the agent’s original in full. Editing isn’t possible here.'
+      : 'The request text didn’t fit in the notification (' + plural(total, 'character') + '); it is in the agent’s session on the Mac. Approve still sends the agent’s original in full. Editing isn’t possible here.';
+  primary.addEventListener('click', act);
+  secondary.addEventListener('click', () => {
+    if (phase !== 'idle') return;
+    mode = mode === 'edit' ? 'read' : 'edit';
+    if (mode === 'edit') editor.value = text;
+    render();
+    if (mode === 'edit') {
+      grow();
+      editor.focus();
+      editor.selectionStart = editor.selectionEnd = editor.value.length;
+    }
+  });
+  editor.addEventListener('input', () => { grow(); render(); });
+  editor.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      if (!primary.disabled) act();
+    }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') handedOff(); });
+  // On the Mac the web app window can stay visible behind Shortcuts; losing focus counts.
+  window.addEventListener('blur', event => { if (event.target === window) handedOff(); });
+  render();
 }
+// A notification opened while this page shows another request changes only the fragment.
+window.addEventListener('hashchange', () => location.reload());
 </script>
 </html>
