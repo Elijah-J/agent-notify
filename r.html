@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Reply to agent</title>
+<main>
+  <h1>Reply to agent</h1>
+  <p id="status" role="status"></p>
+  <button id="approve" hidden>Approve</button>
+  <label id="edit-label" hidden>Edit text <textarea id="text" rows="5"></textarea></label>
+  <button id="edit" hidden>Send edit</button>
+</main>
+<script>
+const args = new URLSearchParams(location.hash.slice(1));
+const id = args.get('id') || '';
+const options = (args.get('o') || '').split(',');
+const status = document.getElementById('status');
+const valid = /^[A-Za-z0-9_-]{1,128}$/.test(id) && options.length > 0 && options.every(option => ['approve', 'edit'].includes(option));
+function reply(verdict) {
+  const text = document.getElementById('text').value.replace(/[\t\r\n]+/g, ' ');
+  const line = id + '\t' + verdict + (verdict === 'edit' ? '\t' + text : '');
+  location.href = 'shortcuts://run-shortcut?name=Agent%20Reply&input=text&text=' + encodeURIComponent(line);
+}
+if (valid) {
+  status.textContent = 'Request ' + id;
+  document.getElementById('approve').hidden = !options.includes('approve');
+  document.getElementById('edit-label').hidden = !options.includes('edit');
+  document.getElementById('edit').hidden = !options.includes('edit');
+  document.getElementById('approve').onclick = () => reply('approve');
+  document.getElementById('edit').onclick = () => reply('edit');
+} else {
+  status.textContent = 'This reply link is incomplete.';
+}
+</script>
+</html>
